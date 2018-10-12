@@ -16,8 +16,7 @@ import argparse
 import re
 import os, glob, datetime
 import numpy as np
-from keras.layers import  Input,Conv2D,Conv1D,BatchNormalization,Activation, MaxPooling2D, Concatenate, Flatten, Dropout
-from keras import losses
+from keras.layers import  Input,Conv2D,BatchNormalization,Activation,Subtract, MaxPooling2D, Concatenate, Flatten, Dropout
 from keras.models import Model, load_model
 from keras.callbacks import CSVLogger, ModelCheckpoint, LearningRateScheduler
 from keras.optimizers import Adam
@@ -73,6 +72,12 @@ if not os.path.exists(save_dir):
 # Merge the Conv2D layer outputs for dense, first concatenate then flatten
 #	64x[4x4] *3
 #=========================================================================
+# solution 1:
+# Dense Layer constract the features into 2K
+#	ReLU
+#	dropout(0.5)
+# Dense Layer constract into 2K with softmax
+#=========================================================================
 # solution 2:
 # Dense Layer constract the features into 64
 #	ReLU
@@ -80,7 +85,7 @@ if not os.path.exists(save_dir):
 # Dense Layer constract into 1
 # use L2 loss
 
-def AFNN(filters=8,image_channels=1, use_bnorm=True):
+def AFNN(filters=64,image_channels=1, use_bnorm=True):
     layer_count = 0
     inpt = Input(shape=(None,None,image_channels),name = 'input'+str(layer_count))
     # 1st layer, Conv+relu
@@ -140,13 +145,13 @@ def AFNN(filters=8,image_channels=1, use_bnorm=True):
 	layer_count += 1
 	x = Flatten(data_format=None, name = 'Flat'+str(layer_count))(x)
 	
-	# Dense output layer
+	# Dense layer
     layer_count += 1
-    x = Dense(64, activation='relu', name = 'dense'+str(layer_count))(x)
+    x = Dense(2048, activation='relu', name = 'dense'+str(layer_count))(x)
 	layer_count += 1
     x = Dropout(0.5, name = 'dropout'+str(layer_count))(x)
     layer_count += 1
-    x = Dense(1, activation='tanh', name = 'dense'+str(layer_count))(x)
+    x = Dense(2048, activation='softmax', name = 'dense'+str(layer_count))(x)
     model = Model(inputs=inpt, outputs=x)
     
     return model
@@ -182,29 +187,35 @@ def lr_schedule(epoch):
     log('current learning rate is %2.8f' %lr)
     return lr
 
-def train_datagen(epoch_iter=2000,epoch_num=5,batch_size=8,data_dir=args.train_data):
+def train_datagen(epoch_iter=2000,epoch_num=5,batch_size=128,data_dir=args.train_data):
     while(True):
         n_count = 0
         if n_count == 0:
             #print(n_count)
-            xs, ys = dg.datagenerator(data_dir)
+            xs = dg.datagenerator(data_dir)
             assert len(xs)%args.batch_size ==0, \
             log('make sure the last iteration has a full batchsize, this is important if you use batch normalization!')
-            xs = xs.astype('float32'/255)
+            xs = xs.astype('float32')
             indices = list(range(xs.shape[0]))
             n_count = 1
         for _ in range(epoch_num):
             np.random.shuffle(indices)    # shuffle
             for i in range(0, len(indices), batch_size):
                 batch_x = xs[indices[i:i+batch_size]]
-				batch_y = ys[indices[i:i+batch_size]]
-                yield batch_x, batch_y
+                #noise =  np.random.normal(0, args.sigma/255.0, batch_x.shape)    # noise
+                #noise =  K.random_normal(ge_batch_y.shape, mean=0, stddev=args.sigma/255.0)
+                batch_y = batch_x + noise 
+                yield batch_y, batch_x
         
 # define loss
+def sum_squared_error(y_true, y_pred):
+    #return K.mean(K.square(y_pred - y_true), axis=-1)
+    #return K.sum(K.square(y_pred - y_true), axis=-1)/2
+    return K.sum(K.square(y_pred - y_true))/2
     
 if __name__ == '__main__':
     # model selection
-    model = AFNN(filters=64,image_channels=1,use_bnorm=True)
+    model = AFNN(depth=5,filters=64,image_channels=1,use_bnorm=True)
     model.summary()
     
     # load the last model in matconvnet style
@@ -214,7 +225,7 @@ if __name__ == '__main__':
         model = load_model(os.path.join(save_dir,'model_%03d.hdf5'%initial_epoch), compile=False)
     
     # compile the model
-    model.compile(optimizer=Adam(0.001), loss=losses.mean_absolute_error)
+    model.compile(optimizer=Adam(0.001), loss=sum_squared_error)
     
     # use call back functions
     checkpointer = ModelCheckpoint(os.path.join(save_dir,'model_{epoch:03d}.hdf5'), 
