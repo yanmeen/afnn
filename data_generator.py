@@ -15,7 +15,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from skimage import io as skio
 
-aug_Times = 2
+aug_Times = 8
 
 
 def show(x, title=None, cbar=False, figsize=None):
@@ -57,7 +57,7 @@ def gen_patches(file_name):
     f, h, w = imgs.shape
     patches = []
     labels = []
-    y = list(range(-100, 100, 1))
+    y = list(range(0, 200, 1))
     #   y = np.array(y, dtype="float32")
     #   y = y / 100
 
@@ -90,7 +90,7 @@ def datagenerator(data_dir="data/Res128", verbose=False):
     data = np.array(data, dtype="uint8")
     data = data.reshape(data.shape[0], data.shape[1], data.shape[2], 1)
     data_label = np.array(data_label, dtype="float32")
-    data_label = data_label / 100
+    data_label = data_label  # /100
     # discard_n = len(data)-len(data)//batch_size*batch_size;
     # data = np.delete(data,range(discard_n),axis = 0)
     print("^_^-training data finished-^_^")

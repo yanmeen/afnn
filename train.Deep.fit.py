@@ -23,7 +23,7 @@ from keras.layers import Dense, MaxPooling2D, Concatenate, Flatten, Dropout
 from keras import losses
 from keras.models import Model, load_model
 from keras.callbacks import CSVLogger, ModelCheckpoint, LearningRateScheduler
-from keras.optimizers import Adam
+from keras import optimizers
 import data_generator as dg
 #import keras.backend as K
 
@@ -34,11 +34,11 @@ parser.add_argument('--model', default='AFNN', type=str,
 parser.add_argument('--batch_size', default=200, type=int, help='batch size')
 parser.add_argument('--train_data', default='data/Res128',
                     type=str, help='path of train data')
-parser.add_argument('--epoch', default=500, type=int,
+parser.add_argument('--epoch', default=1000, type=int,
                     help='number of train epoches')
 parser.add_argument('--lr', default=1e-3, type=float,
-                    help='initial learning rate for Adam')
-parser.add_argument('--save_step', default=10, type=int,
+                    help='initial learning rate')
+parser.add_argument('--save_step', default=20, type=int,
                     help='save model at every x epoches')
 args = parser.parse_args()
 
@@ -159,25 +159,6 @@ def lr_schedule(epoch):
     return lr
 
 
-def train_datagen(epoch_iter=2000, epoch_num=16, batch_size=8, data_dir=args.train_data):
-    while(True):
-        n_count = 0
-        if n_count == 0:
-            # print(n_count)
-            xs, ys = dg.datagenerator(data_dir)
-            assert len(xs) % args.batch_size == 0, \
-                log('make sure the last iteration has a full batchsize, this is important for BN!')
-            xs = xs.astype('float32')
-            xs = xs/255
-            indices = list(range(xs.shape[0]))
-            n_count = 1
-        for _ in range(epoch_num):
-            np.random.shuffle(indices)    # shuffle
-            for i in range(0, len(indices), batch_size):
-                batch_x = xs[indices[i:i+batch_size]]
-                batch_y = ys[indices[i:i+batch_size]]
-                yield batch_x, batch_y
-
 # define loss
 
 
@@ -193,9 +174,10 @@ if __name__ == '__main__':
         AF_model = load_model(os.path.join(
             save_dir, 'model_%03d.hdf5' % initial_epoch), compile=False)
 
+    sgd = optimizers.SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
     # compile the model
-    AF_model.compile(optimizer=Adam(0.001),
-                     loss=losses.mean_squared_error)
+    AF_model.compile(optimizer=optimizers.Adam(
+        0.001), loss=losses.mean_squared_error)
 
     # use call back functions
     check_pointer = ModelCheckpoint(os.path.join(save_dir, 'model_{epoch:03d}.hdf5'),
@@ -204,7 +186,10 @@ if __name__ == '__main__':
         save_dir, 'log.csv'), append=True, separator=',')
     lr_scheduler = LearningRateScheduler(lr_schedule)
 
-    history = AF_model.fit_generator(train_datagen(batch_size=args.batch_size),
-                                     steps_per_epoch=40, epochs=args.epoch, verbose=1,
-                                     initial_epoch=initial_epoch,
-                                     callbacks=[check_pointer, csv_logger, lr_scheduler])
+    xs, ys = dg.datagenerator(data_dir=args.train_data)
+    xs = xs.astype('float32')
+    xs = xs/255
+
+    history = AF_model.fit(xs, ys, batch_size=args.batch_size, epochs=args.epoch, verbose=1, validation_split=0.1,
+                           initial_epoch=initial_epoch, shuffle=True,
+                           callbacks=[check_pointer, csv_logger, lr_scheduler])
