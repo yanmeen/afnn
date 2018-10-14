@@ -66,6 +66,8 @@ def gen_patches(file_name):
         for s in range(0, f, 1):
             # extract patches
             x = imgs[s]
+            # filter pixels that value < 8 as background noise
+            x[x < 8] = 0
             # data augmentation
             x_aug = data_aug(x, mode=np.random.randint(0, 8))
             patches.append(x_aug)
@@ -73,7 +75,7 @@ def gen_patches(file_name):
     return patches, labels
 
 
-def datagenerator(data_dir="data/Res128", verbose=False):
+def datagenerator(data_dir="data/SMRes128", verbose=False):
 
     # get name list of all .png files
     file_list = glob.glob(data_dir + "/*.tif")
