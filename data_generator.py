@@ -57,7 +57,11 @@ def gen_patches(file_name):
     f, h, w = imgs.shape
     patches = []
     labels = []
-    y = list(range(0, 200, 1))
+    y = []
+
+    for i in range(0, 50):
+        y.extend([i, i, i, i])
+
     #   y = np.array(y, dtype="float32")
     #   y = y / 100
 

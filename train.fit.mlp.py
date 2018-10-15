@@ -22,7 +22,7 @@ from keras.layers import Input, Conv2D, BatchNormalization, Activation
 from keras.layers import Dense, MaxPooling2D, Concatenate, Flatten, Dropout
 from keras import losses
 from keras.models import Model, load_model
-from keras.callbacks import CSVLogger, ModelCheckpoint, LearningRateScheduler
+from keras.callbacks import CSVLogger, ModelCheckpoint, LearningRateScheduler, TensorBoard
 from keras import optimizers
 from keras.utils import np_utils
 import data_generator as dg
@@ -33,13 +33,13 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--model', default='AFNN', type=str,
                     help='choose a type of model')
 parser.add_argument('--batch_size', default=160, type=int, help='batch size')
-parser.add_argument('--train_data', default='data/Res128',
+parser.add_argument('--train_data', default='data/SMRes128',
                     type=str, help='path of train data')
-parser.add_argument('--epoch', default=1000, type=int,
+parser.add_argument('--epoch', default=2000, type=int,
                     help='number of train epoches')
 parser.add_argument('--lr', default=1e-3, type=float,
                     help='initial learning rate for Adam')
-parser.add_argument('--save_step', default=20, type=int,
+parser.add_argument('--save_step', default=10, type=int,
                     help='save model at every x epoches')
 args = parser.parse_args()
 
@@ -96,7 +96,7 @@ def AFNN(filters=8, image_channels=1, use_bnorm=True):
                  name='input'+str(layer_count))
     # 1st layer, Conv+relu
     layer_count += 1
-    x_0 = Conv2D(filters=filters, kernel_size=(3, 3), strides=(2, 2),
+    x_0 = Conv2D(filters=filters, kernel_size=(3, 3), strides=(1, 1),
                  kernel_initializer='Orthogonal', padding='same',
                  name='conv'+str(layer_count))(inpt)
     layer_count += 1
@@ -119,7 +119,6 @@ def AFNN(filters=8, image_channels=1, use_bnorm=True):
         x1 = Activation('relu', name='relu_p1'+str(layer_count))(x1)
         x1 = MaxPooling2D(pool_size=(2, 2), strides=None, padding='same',
                           data_format=None, name='maxpool_p1'+str(layer_count))(x1)
-        i += 1
 
     # Path 2
     # 2 layers, Conv+BN+ReLU+MaxPooling
@@ -156,10 +155,10 @@ def AFNN(filters=8, image_channels=1, use_bnorm=True):
                  name='conv_p3'+str(layer_count))(x_1)
     if use_bnorm:
         layer_count += 1
-        x3 = BatchNormalization(
+        x_2 = BatchNormalization(
             axis=3, momentum=0.0, epsilon=0.0001, name='bn_p3'+str(layer_count))(x_2)
     layer_count += 1
-    x3 = Activation('relu', name='relu_p3'+str(layer_count))(x3)
+    x3 = Activation('relu', name='relu_p3'+str(layer_count))(x_2)
     layer_count += 1
     x3 = MaxPooling2D(pool_size=(2, 2), strides=None, padding='same', data_format=None,
                       name='maxpool_p3'+str(layer_count))(x3)
@@ -172,11 +171,11 @@ def AFNN(filters=8, image_channels=1, use_bnorm=True):
 
     # Dense output layer
     layer_count += 1
-    x = Dense(200, activation='relu', name='dense'+str(layer_count))(x)
+    x = Dense(100, activation='relu', name='dense'+str(layer_count))(x)
     layer_count += 1
     x = Dropout(0.5, name='dropout'+str(layer_count))(x)
     layer_count += 1
-    y = Dense(200, activation='softmax', name='dense'+str(layer_count))(x)
+    y = Dense(50, activation='softmax', name='dense'+str(layer_count))(x)
     model = Model(inputs=inpt, outputs=y)
 
     return model
@@ -204,7 +203,7 @@ def log(*args, **kwargs):
 
 def lr_schedule(epoch):
     initial_lr = args.lr
-    if epoch <= 30:
+    if epoch <= 40:
         lr = initial_lr
     elif epoch <= 100:
         lr = initial_lr/10
@@ -218,7 +217,7 @@ def lr_schedule(epoch):
 
 if __name__ == '__main__':
     # model selection
-    AF_model = AFNN(filters=64, image_channels=1, use_bnorm=True)
+    AF_model = AFNN(filters=4, image_channels=1, use_bnorm=True)
     AF_model.summary()
 
     # load the last model in matconvnet style
@@ -229,9 +228,10 @@ if __name__ == '__main__':
             save_dir, 'model_%03d.hdf5' % initial_epoch), compile=False)
 
     sgd = optimizers.SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
-    ad = optimizers.Adam(0.001)
+    ad = optimizers.Adam(0.01)
     # compile the model
-    AF_model.compile(optimizer=ad, metrics='accuracy', loss=losses.categorical_crossentropy)
+    AF_model.compile(optimizer=ad, metrics=['accuracy'],
+                     loss=losses.categorical_crossentropy)
 
     # use call back functions
     check_pointer = ModelCheckpoint(os.path.join(save_dir, 'model_{epoch:03d}.hdf5'),
@@ -239,12 +239,14 @@ if __name__ == '__main__':
     csv_logger = CSVLogger(os.path.join(
         save_dir, 'log.csv'), append=True, separator=',')
     lr_scheduler = LearningRateScheduler(lr_schedule)
-
+    tensor_board = TensorBoard(
+        "./logs", histogram_freq=5, batch_size=160, write_graph=True, write_images=False
+    )
     xs, ys = dg.datagenerator(data_dir=args.train_data)
     xs = xs.astype('float32')
     xs = xs/255
     ys = np_utils.to_categorical(ys)
 
-    history = AF_model.fit(xs, ys, batch_size=args.batch_size, epochs=args.epoch, verbose=1, validation_split=0.1,
+    history = AF_model.fit(xs, ys, batch_size=args.batch_size, epochs=args.epoch, verbose=1, validation_split=0.05,
                            initial_epoch=initial_epoch, shuffle=True,
-                           callbacks=[check_pointer, csv_logger, lr_scheduler])
+                           callbacks=[check_pointer, csv_logger, tensor_board])
