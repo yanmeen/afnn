@@ -15,7 +15,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from skimage import io as skio
 from keras.utils import np_utils
-aug_Times = 4
+aug_Times = 8
 
 
 def show(x, title=None, cbar=False, figsize=None):
