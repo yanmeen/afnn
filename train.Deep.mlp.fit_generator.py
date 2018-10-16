@@ -26,15 +26,18 @@ from keras.callbacks import CSVLogger, ModelCheckpoint, LearningRateScheduler, T
 from keras import optimizers
 from keras.utils import np_utils
 import data_generator as dg
-#import keras.backend as K
+import patch_generator as pg
+# import keras.backend as K
 
 # Params
 parser = argparse.ArgumentParser()
 parser.add_argument('--model', default='AFNN', type=str,
                     help='choose a type of model')
-parser.add_argument('--batch_size', default=160, type=int, help='batch size')
+parser.add_argument('--batch_size', default=100, type=int, help='batch size')
 parser.add_argument('--train_data', default='data/Res128',
                     type=str, help='path of train data')
+parser.add_argument("--train_data_large", default="data/Res256",
+                    type=str, help="path of large size of train data")
 parser.add_argument('--epoch', default=2000, type=int,
                     help='number of train epoches')
 parser.add_argument('--lr', default=1e-2, type=float,
@@ -95,7 +98,15 @@ def AFNN(filters=8, image_channels=1, use_bnorm=True):
     layer_count += 1
     x_0 = Activation('relu', name='relu'+str(layer_count))(x_0)
 
-    # 3rd layers, Conv+relu
+    # 3rd layer, Conv+relu
+    layer_count += 1
+    x_0 = Conv2D(filters=filters, kernel_size=(3, 3), strides=(2, 2),
+                 kernel_initializer='Orthogonal', padding='same',
+                 name='conv'+str(layer_count))(x_0)
+    layer_count += 1
+    x_0 = Activation('relu', name='relu'+str(layer_count))(x_0)
+
+    # 4th layers, Conv+relu
     layer_count += 1
     x_0 = Conv2D(filters=filters, kernel_size=(5, 5), strides=(2, 2),
                  kernel_initializer='Orthogonal', padding='same',
@@ -103,9 +114,9 @@ def AFNN(filters=8, image_channels=1, use_bnorm=True):
     layer_count += 1
     x_0 = Activation('relu', name='relu_'+str(layer_count))(x_0)
 
-    # 4th layer, Conv+ReLU+BN
+    # 5th layer, Conv+ReLU+BN
     layer_count += 1
-    x_0 = Conv2D(filters=filters, kernel_size=(7, 7), strides=(4, 4),
+    x_0 = Conv2D(filters=filters, kernel_size=(7, 7), strides=(2, 2),
                  kernel_initializer='Orthogonal', padding='same', use_bias=False,
                  name='conv_'+str(layer_count))(x_0)
     layer_count += 1
@@ -122,8 +133,8 @@ def AFNN(filters=8, image_channels=1, use_bnorm=True):
     # Dense output layer
     layer_count += 1
     x = Dense(200, activation='relu', name='dense'+str(layer_count))(x)
-    #layer_count += 1
-    #x = Dropout(0.5, name='dropout'+str(layer_count))(x)
+    # layer_count += 1
+    # x = Dropout(0.5, name='dropout'+str(layer_count))(x)
     layer_count += 1
     y = Dense(50, activation='softmax', name='dense'+str(layer_count))(x)
     model = Model(inputs=inpt, outputs=y)
@@ -165,6 +176,35 @@ def lr_schedule(epoch):
     return lr
 
 
+def train_datagen(epoch_iter=2000, batch_size=160):
+    while(True):
+        n_count = 0
+        if n_count == 0:
+            # print(n_count)
+            #xs, ys = dg.data_generator(data_dir=args.train_data, verbose=True)
+            # assert len(xs) % args.batch_size == 0, \
+            #    log('make sure the last iteration has a full batchsize, this is important if you use batch normalization!')
+
+            xs, ys = pg.patch_generator(
+                data_dir=args.train_data_large, verbose=True)
+            assert len(xs) % args.batch_size == 0, \
+                log('make sure the last iteration has a full batchsize, this is important if you use batch normalization!')
+
+            #xs = np.concatenate(xs, xl, axis=0)
+            #ys = np.concatenate(ys, yl, axis=0)
+
+            indices = list(range(xs.shape[0]))
+            epoch_num = len(xs) // batch_size
+            n_count = 1
+
+        for _ in range(epoch_num):
+            np.random.shuffle(indices)    # shuffle
+            for i in range(0, len(indices), batch_size):
+                batch_x = xs[indices[i: i + batch_size]]
+                batch_y = ys[indices[i: i + batch_size]]
+                yield batch_x, batch_y
+
+
 if __name__ == '__main__':
     # model selection
     AF_model = AFNN(filters=4, image_channels=1, use_bnorm=True)
@@ -190,13 +230,13 @@ if __name__ == '__main__':
         save_dir, 'log.csv'), append=True, separator=',')
     lr_scheduler = LearningRateScheduler(lr_schedule)
     tensor_board = TensorBoard(
-        "./logs", histogram_freq=5, batch_size=160, write_graph=True, write_images=False
+        "./logs", histogram_freq=0, batch_size=args.batch_size, write_graph=True, write_images=False
     )
-    xs, ys = dg.datagenerator(data_dir=args.train_data)
-    xs = xs.astype('float32')
-    xs = xs/255
-    ys = np_utils.to_categorical(ys)
 
-    history = AF_model.fit(xs, ys, batch_size=args.batch_size, epochs=args.epoch, verbose=1, validation_split=0.05,
-                           initial_epoch=initial_epoch, shuffle=True,
-                           callbacks=[check_pointer, csv_logger, tensor_board])
+    # history = AF_model.fit(x, y, batch_size=args.batch_size, epochs=args.epoch, verbose=1, validation_split=0.05,
+    #                       initial_epoch=initial_epoch, shuffle=True,
+    #                       callbacks=[check_pointer, csv_logger, tensor_board])
+
+    history = AF_model.fit_generator(train_datagen(batch_size=args.batch_size),
+                                     steps_per_epoch=2000, epochs=args.epoch, verbose=1, initial_epoch=initial_epoch,
+                                     callbacks=[check_pointer, csv_logger, tensor_board])

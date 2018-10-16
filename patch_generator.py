@@ -15,7 +15,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from skimage import io as skio
 from keras.utils import np_utils
-aug_Times = 4
+
+aug_Times = 2
+img_size = 128
+gen_stride = 32
 
 
 def show(x, title=None, cbar=False, figsize=None):
@@ -28,7 +31,7 @@ def show(x, title=None, cbar=False, figsize=None):
     plt.show()
 
 
-def data_aug(img, mode=0):
+def patch_aug(img, mode=0):
 
     if mode == 0:
         img_a = img
@@ -50,7 +53,7 @@ def data_aug(img, mode=0):
     return img_a
 
 
-def gen_data(file_name):
+def gen_patches(file_name):
 
     # read image
     imgs = skio.imread(file_name)  # gray scale
@@ -59,7 +62,7 @@ def gen_data(file_name):
     labels = []
     y = []
 
-    for i in range(0, 50):
+    for i in range(0, f // 4):
         y.extend([i, i, i, i])
 
     y = np.array(y, dtype="float32")
@@ -69,19 +72,22 @@ def gen_data(file_name):
         for s in range(0, f, 1):
             # extract patches
             x = imgs[s]
-            # filter pixels that value < 8 as background noise
-            x[x < 8] = 0
-            # data augmentation
-            x_aug = data_aug(x, mode=np.random.randint(0, 8))
-            x_aug = x_aug.astype("float32")
-            x_aug = x_aug / 255
-            patches.append(x_aug)
-            labels.append(y[s])
+            for i in range(0, h - img_size + 1, gen_stride):
+                for j in range(0, w - img_size + 1, gen_stride):
+                    x_p = x[i: i + img_size, j: j + img_size]
+                    # filter pixels that value < 8 as background noise
+                    x_p[x_p < 8] = 0
+                    # data augmentation
+                    x_aug = patch_aug(x_p, mode=np.random.randint(0, 8))
+                    x_aug = x_aug.astype("float32")
+                    x_aug = x_aug / 255
+                    patches.append(x_aug)
+                    labels.append(y[s])
 
     return patches, labels
 
 
-def data_generator(data_dir="data/SMRes128", verbose=False):
+def patch_generator(data_dir="data/Res256", verbose=False):
 
     # get name list of all .png files
     file_list = glob.glob(data_dir + "/*.tif")
@@ -90,7 +96,7 @@ def data_generator(data_dir="data/SMRes128", verbose=False):
     data_label = []
     # generate patches
     for i in range(len(file_list)):
-        patch, label = gen_data(file_list[i])
+        patch, label = gen_patches(file_list[i])
         data.extend(patch)
         data_label.extend(label)
         if verbose:
@@ -99,13 +105,13 @@ def data_generator(data_dir="data/SMRes128", verbose=False):
     data = data.reshape(data.shape[0], data.shape[1], data.shape[2], 1)
     data_label = np.array(data_label, dtype="float32")
     data_label = np_utils.to_categorical(data_label)
-    print("^_^-training data finished-^_^")
+    print("^_^- large training data finished -^_^")
     return data, data_label
 
 
 if __name__ == "__main__":
 
-    data, label = data_generator(data_dir="data/Res128")
+    data, label = patch_generator(data_dir="data/Res256")
 
 
 #    print('Shape of result = ' + str(res.shape))
