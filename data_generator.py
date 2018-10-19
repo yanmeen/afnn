@@ -15,7 +15,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from skimage import io as skio
 from keras.utils import np_utils
-aug_Times = 8
+
+aug_Times = 4
 
 
 def show(x, title=None, cbar=False, figsize=None):
@@ -59,8 +60,12 @@ def gen_data(file_name):
     labels = []
     y = []
 
+    # for MLP with resolution of 400nm
     for i in range(0, 50):
         y.extend([i, i, i, i])
+
+    # for Regression to one focal position
+    #y = list(range(0, 200))
 
     y = np.array(y, dtype="float32")
     #   y = y / 100
@@ -73,6 +78,7 @@ def gen_data(file_name):
             x[x < 8] = 0
             # data augmentation
             x_aug = data_aug(x, mode=np.random.randint(0, 8))
+            # x_aug = x
             x_aug = x_aug.astype("float32")
             x_aug = x_aug / 255
             patches.append(x_aug)
@@ -98,7 +104,7 @@ def data_generator(data_dir="data/SMRes128", verbose=False):
     data = np.array(data, dtype="uint8")
     data = data.reshape(data.shape[0], data.shape[1], data.shape[2], 1)
     data_label = np.array(data_label, dtype="float32")
-    data_label = np_utils.to_categorical(data_label)
+    #data_label = np_utils.to_categorical(data_label)
     print("^_^-training data finished-^_^")
     return data, data_label
 
