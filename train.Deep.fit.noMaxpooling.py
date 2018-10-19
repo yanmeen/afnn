@@ -2,7 +2,7 @@
 
 # by Dr. Ming Yan (10/2018)
 # yan.meen@gmail.com
-# https://github.com/afnn
+# https://github.com/yanmeen/afnn
 # modified on the code from https://github.com/cszn
 # =============================================================================
 
@@ -96,7 +96,7 @@ def AFNN(filters=8, image_channels=1, use_bnorm=True):
     # x_0 = MaxPooling2D(pool_size=(2, 2), strides=None, padding='same', data_format=None,
     #                   name='maxpool_'+str(layer_count))(x_0)
     # 2 layers, Conv+BN+relu+MaxPooling
-    for i in range(4):
+    for _ in range(4):
         layer_count += 1
         x_0 = Conv2D(filters=filters, kernel_size=(3, 3), strides=(2, 2),
                      kernel_initializer='Orthogonal', padding='same', use_bias=False,

@@ -2,7 +2,7 @@
 
 # by Dr. Ming Yan (10/2018)
 # yan.meen@gmail.com
-# https://github.com/afnn
+# https://github.com/yanmeen/afnn
 # modified on the code from https://github.com/cszn
 # =============================================================================
 
@@ -186,9 +186,7 @@ if __name__ == '__main__':
         save_dir, 'log.csv'), append=True, separator=',')
     lr_scheduler = LearningRateScheduler(lr_schedule)
 
-    xs, ys = dg.datagenerator(data_dir=args.train_data)
-    xs = xs.astype('float32')
-    xs = xs/255
+    xs, ys = dg.data_generator(data_dir=args.train_data)
 
     history = AF_model.fit(xs, ys, batch_size=args.batch_size, epochs=args.epoch, verbose=1, validation_split=0.1,
                            initial_epoch=initial_epoch, shuffle=True,

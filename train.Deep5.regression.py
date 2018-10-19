@@ -2,7 +2,7 @@
 
 # by Dr. Ming Yan (10/2018)
 # yan.meen@gmail.com
-# https://github.com/afnn
+# https://github.com/yanmeen/afnn
 # modified on the code from https://github.com/cszn
 # =============================================================================
 

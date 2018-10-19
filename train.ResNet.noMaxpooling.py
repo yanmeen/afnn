@@ -2,7 +2,7 @@
 
 # by Dr. Ming Yan (10/2018)
 # yan.meen@gmail.com
-# https://github.com/afnn
+# https://github.com/yanmeen/afnn
 # modified on the code from https://github.com/cszn
 # =============================================================================
 
@@ -110,7 +110,7 @@ def AFNN(filters=8, image_channels=1, use_bnorm=True):
     layer_count += 1
     x_1 = Activation('relu', name='relu_p1_'+str(layer_count))(x_1)
 
-    for i in range(3):
+    for _ in range(3):
         layer_count += 1
         x_1 = Conv2D(filters=filters, kernel_size=(3, 3), strides=(2, 2),
                      kernel_initializer='Orthogonal', padding='same', use_bias=False,
@@ -133,7 +133,7 @@ def AFNN(filters=8, image_channels=1, use_bnorm=True):
     layer_count += 1
     x_2 = Activation('relu', name='relu_p2_'+str(layer_count))(x_2)
 
-    for i in range(3):
+    for _ in range(3):
         layer_count += 1
         x_2 = Conv2D(filters=filters, kernel_size=(5, 5), strides=(2, 2), kernel_initializer="Orthogonal",
                      padding="same", use_bias=False, name="conv_p2_" + str(layer_count))(x_2)

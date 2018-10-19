@@ -2,7 +2,7 @@
 
 # by Dr. Ming Yan (10/2018)
 # yan.meen@gmail.com
-# https://github.com/afnn
+# https://github.com/yanmeen/afnn
 # modified on the code from https://github.com/cszn
 # =============================================================================
 
@@ -220,7 +220,7 @@ def train_datagen(epoch_iter=2000, epoch_num=16, batch_size=8, data_dir=args.tra
         n_count = 0
         if n_count == 0:
             # print(n_count)
-            xs, ys = dg.datagenerator(data_dir)
+            xs, ys = dg.data_generator(data_dir)
             assert len(xs) % args.batch_size == 0, \
                 log('make sure the last iteration has a full batchsize, this is important for BN!')
             xs = xs.astype('float32')

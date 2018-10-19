@@ -2,7 +2,7 @@
 
 # by Dr. Ming Yan (10/2018)
 # yan.meen@gmail.com
-# https://github.com/afnn
+# https://github.com/yanmeen/afnn
 # modified on the code from https://github.com/cszn
 # =============================================================================
 
@@ -192,9 +192,7 @@ if __name__ == '__main__':
     tensor_board = TensorBoard(
         "./logs", histogram_freq=5, batch_size=160, write_graph=True, write_images=False
     )
-    xs, ys = dg.datagenerator(data_dir=args.train_data)
-    xs = xs.astype('float32')
-    xs = xs/255
+    xs, ys = dg.data_generator(data_dir=args.train_data)
     ys = np_utils.to_categorical(ys)
 
     history = AF_model.fit(xs, ys, batch_size=args.batch_size, epochs=args.epoch, verbose=1, validation_split=0.05,

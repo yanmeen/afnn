@@ -3,7 +3,7 @@
 # =============================================================================
 # by Dr. Ming Yan (10/2018)
 # yan.meen@gmail.com
-#
+# https://github.com/yanmeen/afnn
 # modified on the code from  https://github.com/cszn
 # =============================================================================
 
@@ -68,7 +68,7 @@ def gen_patches(file_name):
     y = np.array(y, dtype="float32")
     #   y = y / 100
 
-    for k in range(0, aug_Times):
+    for _ in range(0, aug_Times):
         for s in range(0, f, 1):
             # extract patches
             x = imgs[s]
